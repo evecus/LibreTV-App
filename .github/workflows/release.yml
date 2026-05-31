@@ -51,8 +51,20 @@ jobs:
           $tauriConf | ConvertTo-Json -Depth 10 | Set-Content "src-tauri/tauri.conf.json"
           Write-Host "Updated src-tauri/tauri.conf.json to version $version"
 
-          # Update Cargo.toml
-          (Get-Content "src-tauri/Cargo.toml") -replace '^version = ".*"', "version = `"$version`"" | Set-Content "src-tauri/Cargo.toml"
+          # Update Cargo.toml — only replace version inside [package] section
+          $cargoLines = Get-Content "src-tauri/Cargo.toml"
+          $inPackage = $false
+          $replaced = $false
+          $result = foreach ($line in $cargoLines) {
+            if ($line -match '^\[package\]') { $inPackage = $true }
+            elseif ($line -match '^\[') { $inPackage = $false }
+            if ($inPackage -and -not $replaced -and $line -match '^version\s*=\s*"') {
+              $line = "version = `"$version`""
+              $replaced = $true
+            }
+            $line
+          }
+          $result | Set-Content "src-tauri/Cargo.toml"
           Write-Host "Updated src-tauri/Cargo.toml to version $version"
         shell: pwsh
 
